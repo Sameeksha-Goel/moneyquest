@@ -20,10 +20,6 @@ A gamified personal finance tracker where managing your money feels like playing
 - localStorage for persistent game state
 - Fully responsive, mobile-first layout
 
-## Live Demo
-
-[▶ Play MoneyQuest RPG](https://sameeksha-goel.github.io/moneyquest/)
-
 ## Run Locally
 
 No setup needed — just open `index.html` in any browser.
