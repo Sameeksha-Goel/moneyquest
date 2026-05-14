@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoneyQuest RPG</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:      #060612;
+      --bg2:     #0d0d2b;
+      --bg3:     #111133;
+      --border:  #1e1e4a;
+      --gold:    #ffd700;
+      --gold2:   #ffaa00;
+      --green:   #00ff88;
+      --green2:  #00cc6a;
+      --red:     #ff4757;
+      --purple:  #7b2ff7;
+      --purple2: #9b59ff;
+      --blue:    #4fc3f7;
+      --text:    #e2e8f0;
+      --muted:   #8892b0;
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── LOADING ── */
+    #loading {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 1000; transition: opacity .5s;
+    }
+    .loading-logo {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 1.4rem; color: var(--gold);
+      text-shadow: 0 0 24px var(--gold);
+      text-align: center; line-height: 2.2;
+      animation: glow 1.2s ease-in-out infinite alternate;
+    }
+    .load-bar-wrap {
+      width: 280px; height: 8px;
+      background: var(--bg3); border-radius: 4px;
+      margin-top: 32px; overflow: hidden;
+    }
+    .load-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--purple), var(--gold));
+      animation: loadFill 2.2s ease-out forwards;
+    }
+    .load-sub {
+      margin-top: 14px; color: var(--muted);
+      font-size: .75rem; animation: blink .9s infinite;
+    }
+    @keyframes loadFill { from{width:0} to{width:100%} }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+    @keyframes glow {
+      from { text-shadow: 0 0 10px var(--gold); }
+      to   { text-shadow: 0 0 40px var(--gold), 0 0 80px var(--gold2); }
+    }
+
+    /* ── HEADER ── */
+    #header {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 18px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .hdr-logo {
+      font-family: 'Press Start 2P', monospace;
+      font-size: .8rem; color: var(--gold);
+      text-shadow: 0 0 10px var(--gold);
+    }
+    .hdr-right { display: flex; align-items: center; gap: 12px; }
+    .hdr-level {
+      background: linear-gradient(135deg, var(--purple), var(--purple2));
+      border-radius: 8px; padding: 6px 12px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: .55rem; color: #fff;
+      box-shadow: 0 0 14px rgba(123,47,247,.5);
+      white-space: nowrap;
+    }
+    .hdr-xp { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .hdr-xp-lbl { font-size: .68rem; color: var(--muted); }
+    .hdr-xp-bar { width: 110px; height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+    .hdr-xp-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--purple), var(--gold));
+      transition: width .5s ease;
+    }
+
+    /* ── NAV ── */
+    #nav {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      display: flex; overflow-x: auto; scrollbar-width: none;
+    }
+    #nav::-webkit-scrollbar { display: none; }
+    .nav-btn {
+      padding: 13px 18px; background: none; border: none;
+      color: var(--muted); cursor: pointer;
+      font-family: 'Inter', sans-serif; font-size: .82rem; font-weight: 500;
+      white-space: nowrap; border-bottom: 2px solid transparent;
+      transition: color .2s, border-color .2s;
+    }
+    .nav-btn:hover { color: var(--text); }
+    .nav-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+    /* ── CONTENT ── */
+    #content {
+      max-width: 900px; margin: 0 auto;
+      padding: 20px 14px 100px;
+    }
+    .tab { display: none; }
+    .tab.active { display: block; }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px;
+      box-shadow: 0 0 20px rgba(123,47,247,.1);
+      margin-bottom: 14px;
+    }
+    .card-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: .55rem; color: var(--gold);
+      margin-bottom: 16px; letter-spacing: 1px;
+    }
+
+    /* ── CHARACTER CARD ── */
+    .char-card {
+      background: linear-gradient(135deg, #0d0d2b 0%, #1a0a3e 100%);
+      border: 1px solid var(--purple);
+      border-radius: 16px; padding: 22px;
+      box-shadow: 0 0 30px rgba(123,47,247,.2);
+      margin-bottom: 14px;
+    }
+    .char-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+    .char-class-lbl { font-family: 'Press Start 2P', monospace; font-size: .45rem; color: var(--purple2); margin-bottom: 6px; }
+    .char-name { font-size: 1.35rem; font-weight: 700; }
+    .char-title-lbl { font-size: .75rem; color: var(--muted); font-style: italic; margin-top: 3px; }
+    .lvl-badge {
+      background: linear-gradient(135deg, var(--gold2), var(--gold));
+      color: var(--bg); font-family: 'Press Start 2P', monospace;
+      font-size: 1rem; padding: 12px 14px; border-radius: 10px;
+      text-align: center; box-shadow: 0 0 18px rgba(255,215,0,.4);
+      min-width: 76px;
+    }
+    .lvl-badge .sub { font-size: .38rem; display: block; margin-bottom: 4px; opacity: .8; }
+
+    /* XP Bar */
+    .xp-labels { display: flex; justify-content: space-between; font-size: .72rem; color: var(--muted); margin-bottom: 6px; }
+    .xp-bar { width: 100%; height: 12px; background: var(--bg3); border-radius: 6px; overflow: hidden; }
+    .xp-fill {
+      height: 100%; border-radius: 6px;
+      background: linear-gradient(90deg, var(--purple), var(--gold));
+      transition: width .8s cubic-bezier(.34,1.56,.64,1);
+      position: relative; overflow: hidden;
+    }
+    .xp-fill::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.25), transparent);
+      animation: shimmer 2s infinite;
+    }
+    @keyframes shimmer { from{transform:translateX(-100%)} to{transform:translateX(100%)} }
+
+    /* ── STATS GRID ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2,1fr);
+      gap: 10px; margin-bottom: 14px;
+    }
+    @media(min-width:540px){ .stats-grid{ grid-template-columns: repeat(4,1fr); } }
+    .stat-card {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px; text-align: center;
+    }
+    .stat-card .si { font-size: 1.5rem; margin-bottom: 6px; }
+    .stat-card .sv { font-size: 1.05rem; font-weight: 700; }
+    .stat-card .sl { font-size: .62rem; color: var(--muted); margin-top: 3px; }
+    .stat-info .sv   { color: var(--blue); }
+    .stat-danger .sv { color: var(--red); }
+    .stat-warn .sv   { color: var(--gold); }
+    .stat-ok .sv     { color: var(--green); }
+
+    /* ── CHART ── */
+    .chart-wrap { max-width: 320px; margin: 0 auto; }
+
+    /* ── STREAKS ── */
+    .streaks-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+    .streak-card {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px; text-align: center;
+      transition: border-color .3s, box-shadow .3s;
+    }
+    .streak-card.on { border-color: var(--gold); box-shadow: 0 0 14px rgba(255,215,0,.2); }
+    .streak-icon { font-size: 1.8rem; }
+    .streak-num { font-family: 'Press Start 2P', monospace; font-size: .9rem; color: var(--gold); margin: 6px 0; }
+    .streak-lbl { font-size: .62rem; color: var(--muted); }
+
+    /* ── BUDGET BARS ── */
+    .brow { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .brow-lbl { width: 96px; font-size: .78rem; color: var(--muted); flex-shrink: 0; }
+    .brow-bar { flex: 1; height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+    .brow-fill { height: 100%; border-radius: 4px; transition: width .5s; }
+    .brow-fill.safe { background: var(--green2); }
+    .brow-fill.warn { background: var(--gold); }
+    .brow-fill.over { background: var(--red); }
+    .brow-amt { font-size: .72rem; white-space: nowrap; }
+
+    /* ── QUESTS ── */
+    .section-sub {
+      font-family: 'Press Start 2P', monospace;
+      font-size: .5rem; color: var(--muted);
+      letter-spacing: 2px; margin: 20px 0 12px;
+    }
+    .quest-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 15px;
+      margin-bottom: 10px; display: flex; align-items: center; gap: 14px;
+      cursor: pointer; transition: all .2s; user-select: none;
+    }
+    .quest-card:hover:not(.done) {
+      border-color: var(--purple); transform: translateY(-1px);
+      box-shadow: 0 4px 18px rgba(123,47,247,.2);
+    }
+    .quest-card.done { opacity: .6; border-color: var(--green2); cursor: default; }
+    .quest-ico { font-size: 1.9rem; width: 44px; text-align: center; flex-shrink: 0; }
+    .quest-info { flex: 1; }
+    .quest-name { font-weight: 600; margin-bottom: 3px; }
+    .quest-desc { font-size: .78rem; color: var(--muted); }
+    .quest-xp {
+      background: rgba(255,215,0,.1);
+      border: 1px solid rgba(255,215,0,.3);
+      color: var(--gold); font-weight: 600;
+      font-size: .78rem; padding: 5px 9px; border-radius: 7px;
+      white-space: nowrap;
+    }
+    .quest-chk {
+      width: 26px; height: 26px; border: 2px solid var(--border);
+      border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; flex-shrink: 0; font-size: .8rem;
+      transition: all .2s;
+    }
+    .quest-card.done .quest-chk { background: var(--green2); border-color: var(--green2); color: #000; }
+
+    /* ── BOSS ── */
+    .boss-card {
+      background: linear-gradient(135deg, #1a0808, #0d0d2b);
+      border: 1px solid #3a1010; border-radius: 12px;
+      padding: 20px; margin-bottom: 14px;
+    }
+    .boss-card.dead { border-color: var(--green2); background: linear-gradient(135deg, #081a08, #0d0d2b); }
+    .boss-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+    .boss-name { font-weight: 700; font-size: 1.05rem; }
+    .boss-gate { font-size: .72rem; color: var(--muted); margin-top: 3px; }
+    .boss-emoji { font-size: 2.4rem; }
+    .boss-desc { font-size: .82rem; color: var(--muted); margin-bottom: 13px; }
+    .boss-hp-lbl { display: flex; justify-content: space-between; font-size: .72rem; color: var(--muted); margin-bottom: 5px; }
+    .boss-bar { width: 100%; height: 14px; background: var(--bg3); border-radius: 7px; overflow: hidden; margin-bottom: 9px; }
+    .boss-fill { height: 100%; border-radius: 7px; transition: width .8s; background: linear-gradient(90deg, var(--red), #ff8c00); }
+    .boss-card.dead .boss-fill { background: linear-gradient(90deg, var(--green2), var(--green)); }
+    .boss-reward { font-size: .72rem; color: var(--gold); }
+
+    /* ── TRACKER ── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    @media(min-width:480px){ .form-grid { grid-template-columns: 1fr 1fr 1fr; } }
+    .fg { display: flex; flex-direction: column; gap: 5px; }
+    .fg.full { grid-column: 1/-1; }
+    .fg label { font-size: .72rem; color: var(--muted); font-weight: 500; }
+    .finput, .fselect {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px;
+      color: var(--text); font-family: 'Inter', sans-serif;
+      font-size: .88rem; outline: none; transition: border-color .2s;
+    }
+    .finput:focus, .fselect:focus { border-color: var(--purple); }
+    .fselect option { background: var(--bg2); }
+    .btn-pri {
+      background: linear-gradient(135deg, var(--purple), var(--purple2));
+      color: #fff; border: none; border-radius: 8px;
+      padding: 12px 22px; font-family: 'Inter', sans-serif;
+      font-size: .88rem; font-weight: 600; cursor: pointer;
+      transition: all .2s; width: 100%;
+    }
+    .btn-pri:hover { transform: translateY(-1px); box-shadow: 0 4px 18px rgba(123,47,247,.4); }
+
+    /* expense history */
+    .exp-item {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 11px 0; border-bottom: 1px solid var(--border);
+    }
+    .exp-item:last-child { border-bottom: none; }
+    .exp-left { display: flex; align-items: center; gap: 10px; }
+    .exp-ico { font-size: 1.2rem; }
+    .exp-n { font-weight: 500; font-size: .88rem; }
+    .exp-d { font-size: .7rem; color: var(--muted); margin-top: 2px; }
+    .exp-amt { font-weight: 700; color: var(--red); }
+
+    /* ── ACHIEVEMENTS ── */
+    .ach-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 11px; }
+    @media(min-width:560px){ .ach-grid { grid-template-columns: repeat(4,1fr); } }
+    .ach-card {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 12px; padding: 18px 12px; text-align: center;
+      transition: all .2s;
+    }
+    .ach-card.got { border-color: var(--gold); background: linear-gradient(135deg,#1a1a0a,var(--bg3)); box-shadow: 0 0 18px rgba(255,215,0,.1); }
+    .ach-card.locked { filter: grayscale(.8); }
+    .ach-ico { font-size: 2.4rem; margin-bottom: 9px; }
+    .ach-name { font-weight: 600; font-size: .83rem; margin-bottom: 3px; }
+    .ach-desc { font-size: .67rem; color: var(--muted); }
+    .ach-badge {
+      display: inline-block; font-size: .58rem;
+      padding: 3px 7px; border-radius: 4px; margin-top: 6px;
+    }
+    .ach-badge.got    { background: rgba(255,215,0,.15); color: var(--gold); }
+    .ach-badge.locked { background: rgba(136,146,176,.15); color: var(--muted); }
+
+    /* penalty */
+    .pen-item { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); font-size:.83rem; }
+    .pen-item:last-child { border-bottom:none; }
+    .pen-xp { color: var(--red); font-weight:700; }
+
+    /* ── SETTINGS ── */
+    .settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    @media(max-width:420px){ .settings-grid{grid-template-columns:1fr;} }
+    hr.divider { border:none; border-top:1px solid var(--border); margin:18px 0; }
+    .btn-danger {
+      background: var(--red); color:#fff; border:none; border-radius:8px;
+      padding:10px 20px; font-weight:600; cursor:pointer; font-size:.85rem;
+    }
+
+    /* ── LOGIN BANNER ── */
+    .login-banner {
+      background: linear-gradient(135deg, rgba(255,215,0,.08), rgba(123,47,247,.08));
+      border: 1px solid rgba(255,215,0,.25);
+      border-radius: 10px; padding: 14px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .login-banner .sub { font-family:'Press Start 2P',monospace; font-size:.55rem; color:var(--gold); }
+    .login-banner .msg { font-size:.82rem; margin-top:4px; color:var(--muted); }
+    .btn-claim {
+      background: linear-gradient(135deg,var(--gold2),var(--gold));
+      color: var(--bg); border:none; border-radius:6px;
+      padding:8px 13px; font-family:'Inter',sans-serif;
+      font-size:.78rem; font-weight:700; cursor:pointer; transition:all .2s;
+      white-space: nowrap;
+    }
+    .btn-claim:hover { transform:scale(1.05); }
+    .btn-claim:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+
+    /* ── XP POPUP ── */
+    .xp-pop {
+      position:fixed; pointer-events:none;
+      font-family:'Press Start 2P',monospace; font-size:.78rem;
+      color:var(--gold); text-shadow:0 0 10px var(--gold);
+      z-index:999; animation:xpFloat 1.6s ease-out forwards;
+    }
+    @keyframes xpFloat {
+      0%  { opacity:1; transform:translateY(0) scale(1); }
+      100%{ opacity:0; transform:translateY(-90px) scale(1.3); }
+    }
+
+    /* ── LEVEL-UP MODAL ── */
+    #lu-modal {
+      display:none; position:fixed; inset:0;
+      background:rgba(0,0,0,.88); z-index:500;
+      align-items:center; justify-content:center;
+    }
+    #lu-modal.show { display:flex; }
+    .lu-box {
+      background: linear-gradient(135deg,#0d0d2b,#1a0a3e);
+      border: 2px solid var(--gold); border-radius: 20px;
+      padding: 38px 30px; text-align: center;
+      box-shadow: 0 0 60px rgba(255,215,0,.4);
+      animation: luPop .5s cubic-bezier(.34,1.56,.64,1);
+      max-width: 380px; width: 90%;
+    }
+    @keyframes luPop { from{transform:scale(.4);opacity:0} to{transform:scale(1);opacity:1} }
+    .lu-title { font-family:'Press Start 2P',monospace; font-size:.95rem; color:var(--gold); text-shadow:0 0 18px var(--gold); margin-bottom:8px; }
+    .lu-num   { font-family:'Press Start 2P',monospace; font-size:3rem; color:var(--gold); text-shadow:0 0 40px var(--gold); margin:18px 0; }
+    .lu-class { color:var(--purple2); font-size:.9rem; margin-bottom:6px; }
+    .lu-msg   { color:var(--muted); font-size:.83rem; }
+    .lu-btn {
+      background:linear-gradient(135deg,var(--gold2),var(--gold));
+      color:var(--bg); border:none; border-radius:8px;
+      padding:12px 28px; font-family:'Press Start 2P',monospace;
+      font-size:.55rem; cursor:pointer; margin-top:20px;
+    }
+
+    /* ── TOAST ── */
+    .toast {
+      position:fixed; bottom:20px; right:16px;
+      background:var(--bg2); border-radius:10px;
+      padding:13px 16px; z-index:400; max-width:300px;
+      font-size:.83rem; animation:toastIn .3s ease;
+      box-shadow:0 4px 20px rgba(0,0,0,.5);
+    }
+    @keyframes toastIn { from{transform:translateX(110px);opacity:0} to{transform:translateX(0);opacity:1} }
+
+    /* empty state */
+    .empty { text-align:center; padding:36px 16px; color:var(--muted); }
+    .empty .ei { font-size:2.8rem; margin-bottom:10px; }
+    .empty p { font-size:.82rem; }
+  </style>
+</head>
+<body>
+
+<!-- ══ LOADING SCREEN ══ -->
+<div id="loading">
+  <div class="loading-logo">MONEY<br>QUEST<br>RPG</div>
+  <div class="load-bar-wrap"><div class="load-bar"></div></div>
+  <div class="load-sub">LOADING QUEST DATA...</div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app" style="display:none">
+
+  <header id="header">
+    <div class="hdr-logo">⚔️ MONEYQUEST</div>
+    <div class="hdr-right">
+      <div class="hdr-xp">
+        <div class="hdr-xp-lbl"><span id="h-xp">400</span> / <span id="h-xpmax">1000</span> XP</div>
+        <div class="hdr-xp-bar"><div class="hdr-xp-fill" id="h-xpfill" style="width:40%"></div></div>
+      </div>
+      <div class="hdr-level">LVL <span id="h-lvl">4</span></div>
+    </div>
+  </header>
+
+  <nav id="nav">
+    <button class="nav-btn active"  onclick="go('dashboard',this)">📊 Dashboard</button>
+    <button class="nav-btn"         onclick="go('quests',this)">⚔️ Quests</button>
+    <button class="nav-btn"         onclick="go('bosses',this)">🐉 Bosses</button>
+    <button class="nav-btn"         onclick="go('tracker',this)">📝 Tracker</button>
+    <button class="nav-btn"         onclick="go('achievements',this)">🏆 Achievements</button>
+    <button class="nav-btn"         onclick="go('settings',this)">⚙️ Settings</button>
+  </nav>
+
+  <div id="content">
+
+    <!-- ══ DASHBOARD ══ -->
+    <div class="tab active" id="tab-dashboard">
+      <div class="login-banner" id="login-banner">
+        <div>
+          <div class="sub">🌅 DAILY LOGIN BONUS</div>
+          <div class="msg">Come back daily to earn bonus XP!</div>
+        </div>
+        <button class="btn-claim" id="claim-btn" onclick="claimLogin()">CLAIM +25 XP</button>
+      </div>
+
+      <div class="char-card">
+        <div class="char-top">
+          <div>
+            <div class="char-class-lbl" id="d-class">🌪️ THE DRIFTER</div>
+            <div class="char-name" id="d-name">Hero</div>
+            <div class="char-title-lbl" id="d-title">"Debt-Free but Directionless"</div>
+          </div>
+          <div class="lvl-badge">
+            <span class="sub">LEVEL</span>
+            <span id="d-lvl">4</span>
+          </div>
+        </div>
+        <div class="xp-labels">
+          <span>XP: <strong id="d-xp">400</strong></span>
+          <span>Next: <strong id="d-xpmax">1000</strong></span>
+        </div>
+        <div class="xp-bar"><div class="xp-fill" id="d-xpfill" style="width:40%"></div></div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card stat-info">
+          <div class="si">💰</div><div class="sv" id="d-income">₹20,000</div><div class="sl">Monthly Income</div>
+        </div>
+        <div class="stat-card stat-danger">
+          <div class="si">💸</div><div class="sv" id="d-spend">₹16,348</div><div class="sl">Monthly Spend</div>
+        </div>
+        <div class="stat-card stat-warn">
+          <div class="si">🆓</div><div class="sv" id="d-free">₹3,652</div><div class="sl">Free Gold</div>
+        </div>
+        <div class="stat-card stat-ok">
+          <div class="si">🏦</div><div class="sv" id="d-saved">₹0</div><div class="sl">Total Saved</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 GOLD DRAIN MAP</div>
+        <div class="chart-wrap"><canvas id="expChart"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚠️ BUDGET STATUS</div>
+        <div id="d-budget"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔥 ACTIVE STREAKS</div>
+        <div class="streaks-grid">
+          <div class="streak-card" id="sc-saving">
+            <div class="streak-icon">💰</div>
+            <div class="streak-num" id="ss-saving">0</div>
+            <div class="streak-lbl">Saving Days</div>
+          </div>
+          <div class="streak-card" id="sc-logging">
+            <div class="streak-icon">📝</div>
+            <div class="streak-num" id="ss-logging">0</div>
+            <div class="streak-lbl">Logging Days</div>
+          </div>
+          <div class="streak-card" id="sc-quest">
+            <div class="streak-icon">⚔️</div>
+            <div class="streak-num" id="ss-quest">0</div>
+            <div class="streak-lbl">Quest Days</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ QUESTS ══ -->
+    <div class="tab" id="tab-quests">
+      <div class="section-sub">⚡ DAILY QUESTS — RESETS MIDNIGHT</div>
+      <div id="q-daily"></div>
+      <div class="section-sub" style="margin-top:24px">📅 WEEKLY MISSIONS — RESETS SUNDAY</div>
+      <div id="q-weekly"></div>
+    </div>
+
+    <!-- ══ BOSSES ══ -->
+    <div class="tab" id="tab-bosses">
+      <div class="card" style="background:linear-gradient(135deg,#1a0808,#0d0d2b);border-color:#3a1010;margin-bottom:18px">
+        <div class="card-title" style="color:var(--red)">⚠️ ACTIVE BOSS THREATS</div>
+        <p style="font-size:.82rem;color:var(--muted)">Defeat bosses by hitting financial milestones. Track savings below to update boss HP.</p>
+      </div>
+      <div id="b-list"></div>
+      <div class="card">
+        <div class="card-title">💰 UPDATE SAVINGS</div>
+        <div class="fg" style="margin-bottom:12px">
+          <label>Current Total Savings (₹)</label>
+          <input type="number" class="finput" id="sav-input" placeholder="Enter your total savings">
+        </div>
+        <button class="btn-pri" onclick="updateSavings()">UPDATE BOSS HP ⚔️</button>
+      </div>
+    </div>
+
+    <!-- ══ TRACKER ══ -->
+    <div class="tab" id="tab-tracker">
+      <div class="card">
+        <div class="card-title">➕ LOG EXPENSE</div>
+        <div class="form-grid">
+          <div class="fg">
+            <label>Amount (₹)</label>
+            <input type="number" class="finput" id="e-amt" placeholder="0">
+          </div>
+          <div class="fg">
+            <label>Category</label>
+            <select class="fselect" id="e-cat">
+              <option value="food">🍕 Food</option>
+              <option value="transport">🚌 Transport</option>
+              <option value="shopping">🛍️ Shopping</option>
+              <option value="subscriptions">📱 Subscriptions</option>
+              <option value="education">📚 Education</option>
+              <option value="entertainment">🎮 Entertainment</option>
+              <option value="other">📦 Other</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Description</label>
+            <input type="text" class="finput" id="e-desc" placeholder="What was it?">
+          </div>
+        </div>
+        <button class="btn-pri" onclick="logExpense()">LOG EXPENSE &nbsp;+30 XP</button>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 THIS MONTH'S SPENDING</div>
+        <div id="t-monthly"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🕐 RECENT EXPENSES</div>
+        <div id="t-history"></div>
+      </div>
+    </div>
+
+    <!-- ══ ACHIEVEMENTS ══ -->
+    <div class="tab" id="tab-achievements">
+      <div class="card" style="margin-bottom:18px">
+        <div class="card-title">🏅 BADGES EARNED</div>
+        <p style="font-size:.82rem;color:var(--muted)">Complete financial milestones to unlock badges. Each unlock awards +100 XP.</p>
+      </div>
+      <div class="ach-grid" id="a-grid"></div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-title" style="color:var(--red)">💀 PENALTY LOG</div>
+        <div id="a-penalties"></div>
+      </div>
+    </div>
+
+    <!-- ══ SETTINGS ══ -->
+    <div class="tab" id="tab-settings">
+      <div class="card">
+        <div class="card-title">👤 PLAYER NAME</div>
+        <div class="fg" style="margin-bottom:14px">
+          <label>Your Name</label>
+          <input type="text" class="finput" id="s-name" placeholder="Enter name">
+        </div>
+        <button class="btn-pri" onclick="saveName()">SAVE NAME</button>
+      </div>
+      <div class="card">
+        <div class="card-title">💰 MONTHLY FINANCES</div>
+        <div class="settings-grid">
+          <div class="fg"><label>Income (₹)</label><input type="number" class="finput" id="sf-income" placeholder="20000"></div>
+          <div class="fg"><label>Food Budget</label><input type="number" class="finput" id="sf-food" placeholder="7200"></div>
+          <div class="fg"><label>Transport</label><input type="number" class="finput" id="sf-transport" placeholder="1500"></div>
+          <div class="fg"><label>Subscriptions</label><input type="number" class="finput" id="sf-subscriptions" placeholder="348"></div>
+          <div class="fg"><label>Shopping</label><input type="number" class="finput" id="sf-shopping" placeholder="5000"></div>
+          <div class="fg"><label>Education</label><input type="number" class="finput" id="sf-education" placeholder="2300"></div>
+          <div class="fg"><label>Entertainment</label><input type="number" class="finput" id="sf-entertainment" placeholder="0"></div>
+          <div class="fg"><label>Other</label><input type="number" class="finput" id="sf-other" placeholder="0"></div>
+        </div>
+        <hr class="divider">
+        <button class="btn-pri" onclick="saveFinances()">UPDATE FINANCES</button>
+      </div>
+      <div class="card" style="border-color:var(--red)">
+        <div class="card-title" style="color:var(--red)">⚠️ DANGER ZONE</div>
+        <p style="font-size:.78rem;color:var(--muted);margin-bottom:12px">Wipe all game data. Cannot be undone.</p>
+        <button class="btn-danger" onclick="resetGame()">RESET ALL DATA</button>
+      </div>
+    </div>
+
+  </div><!-- #content -->
+</div><!-- #app -->
+
+<!-- LEVEL UP MODAL -->
+<div id="lu-modal">
+  <div class="lu-box">
+    <div style="font-size:3rem">🎊</div>
+    <div class="lu-title">LEVEL UP!</div>
+    <div class="lu-num" id="lu-num">5</div>
+    <div class="lu-class" id="lu-class"></div>
+    <div class="lu-msg"   id="lu-msg"></div>
+    <button class="lu-btn" onclick="closeLU()">CONTINUE ▶</button>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════
+   CONSTANTS
+══════════════════════════════════════════════ */
+const LVL_XP = [0,0,100,300,600,1000,1600,2400,3500,5000,7000,9500,12500,16000,20000,25000,31000,38000,46500,56500,68000];
+function xpForLvl(l){ return LVL_XP[Math.min(l, LVL_XP.length-1)] || l*3500; }
+
+const CLASSES = {
+  1:  { cls:'🌱 THE SEEDLING',  title:'Just Starting Out' },
+  4:  { cls:'🌪️ THE DRIFTER',   title:'Debt-Free but Directionless' },
+  10: { cls:'🛡️ THE SAVER',     title:'Emergency Shield Equipped' },
+  15: { cls:'⚔️ THE PLANNER',   title:'Master of the Budget' },
+  20: { cls:'📈 THE INVESTOR',  title:'Wealth Builder Initiated' },
+  30: { cls:'💎 THE CHAMPION',  title:'Financial Freedom Seeker' },
+  50: { cls:'👑 THE LEGEND',    title:'Financially Free' },
+};
+function classForLvl(l){
+  const keys = Object.keys(CLASSES).map(Number).sort((a,b)=>b-a);
+  for(const k of keys) if(l>=k) return CLASSES[k];
+  return CLASSES[1];
+}
+
+const DAILY_QUESTS = [
+  { id:'d1', title:'The First Coin',     desc:'Transfer ₹100 to savings today',        xp:50,  icon:'💰' },
+  { id:'d2', title:'Receipt Hunter',     desc:'Log at least one expense today',         xp:30,  icon:'🧾' },
+  { id:'d3', title:'Food Boss Poke',     desc:'Eat one home-cooked meal',               xp:40,  icon:'🍳' },
+  { id:'d4', title:'Mindful Spender',    desc:'Pause before any purchase over ₹200',   xp:20,  icon:'🧘' },
+];
+const WEEKLY_QUESTS = [
+  { id:'w1', title:'Launch The Vault',   desc:'Open a separate savings account',         xp:200, icon:'🏦' },
+  { id:'w2', title:'Slay The Food Boss', desc:'Keep food spend under ₹5,500 this week', xp:150, icon:'⚔️' },
+  { id:'w3', title:'Shopping Freeze',    desc:'Zero shopping purchases this week',       xp:200, icon:'🧊' },
+  { id:'w4', title:'Audit The Goblin',   desc:'Find one subscription to cut or reduce', xp:100, icon:'🔍' },
+  { id:'w5', title:'Savings Deposit',    desc:'Transfer ₹500+ to savings this week',    xp:250, icon:'💳' },
+];
+
+const BOSSES = [
+  { id:'b1', name:'The Emergency Goblin', emoji:'👺', desc:'Build 1 full month of emergency savings (₹16,348)', target:16348, gate:10, reward:500,  color:'var(--red)' },
+  { id:'b3', name:'The 3-Month Shield',   emoji:'🧟', desc:'Build 3 months of expenses as safety net (₹49,044)',target:49044, gate:15, reward:1000, color:'var(--purple2)' },
+  { id:'b2', name:'The Zero Investor',    emoji:'💤', desc:'Start a ₹500/mo SIP — flip this boss manually when done', target:1, gate:20, reward:300, color:'#ff8c00', manual:true },
+  { id:'b4', name:'The Debt Dragon',      emoji:'🐉', desc:'Stay debt-free — already slain!', target:1, gate:5, reward:200, color:'var(--green)', preDefeated:true },
+];
+
+const ACHIEVEMENTS = [
+  { id:'a1',  name:'Debt Slayer',      desc:'Zero debt',                    icon:'⚔️',  chk: s => s.fin.debt===0 },
+  { id:'a2',  name:'First Shield',     desc:'Save ₹5,000',                 icon:'🛡️', chk: s => s.fin.saved>=5000 },
+  { id:'a3',  name:'Vault Keeper',     desc:'Save ₹10,000',                icon:'🏰',  chk: s => s.fin.saved>=10000 },
+  { id:'a4',  name:'Gold Hoarder',     desc:'Save ₹50,000',                icon:'💰',  chk: s => s.fin.saved>=50000 },
+  { id:'a5',  name:'Quest Rookie',     desc:'Complete 5 quests',            icon:'📜',  chk: s => s.questsTotal>=5 },
+  { id:'a6',  name:'Quest Veteran',    desc:'Complete 25 quests',           icon:'📚',  chk: s => s.questsTotal>=25 },
+  { id:'a7',  name:'Streak Starter',   desc:'7-day saving streak',          icon:'🔥',  chk: s => s.streaks.saving>=7 },
+  { id:'a8',  name:'Streak Master',    desc:'30-day saving streak',         icon:'⚡',  chk: s => s.streaks.saving>=30 },
+  { id:'a9',  name:'Investor Initiate',desc:'Started first SIP',            icon:'📈',  chk: s => s.bossDone.b2===true },
+  { id:'a10', name:'Level 10 Hero',    desc:'Reach Level 10',               icon:'🏆',  chk: s => s.player.lvl>=10 },
+  { id:'a11', name:'Consistent',       desc:'Log expenses 14 days in a row',icon:'📝',  chk: s => s.streaks.logging>=14 },
+  { id:'a12', name:'No Debt 6mo',      desc:'6 months debt-free',           icon:'🦁',  chk: s => s.debtFreeDays>=180 },
+];
+
+const CATS = {
+  food:          { icon:'🍕', label:'Food',          color:'#ff6b6b' },
+  transport:     { icon:'🚌', label:'Transport',     color:'#4ecdc4' },
+  shopping:      { icon:'🛍️', label:'Shopping',     color:'#a29bfe' },
+  subscriptions: { icon:'📱', label:'Subscriptions', color:'#fd79a8' },
+  education:     { icon:'📚', label:'Education',     color:'#00cec9' },
+  entertainment: { icon:'🎮', label:'Entertainment', color:'#fdcb6e' },
+  other:         { icon:'📦', label:'Other',         color:'#b2bec3' },
+};
+
+/* ══════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════ */
+function defaultState(){
+  return {
+    player:   { name:'Hero', lvl:4, xp:400, cls:'🌪️ THE DRIFTER', title:'"Debt-Free but Directionless"' },
+    fin:      { income:20000, budgets:{ food:7200, transport:1500, subscriptions:348, shopping:5000, education:2300, entertainment:0, other:0 }, saved:0, debt:0 },
+    streaks:  { saving:0, logging:0, quest:0, lastSave:null, lastLog:null, lastQuest:null },
+    quests:   { daily:{}, weekly:{}, dReset:null, wReset:null },
+    expenses: [],
+    ach:      { a1:true },
+    penalties:[],
+    bossDone: { b4:true },
+    questsTotal: 0,
+    debtFreeDays: 180,
+    lastLogin: null,
+    loginStreak: 0,
+  };
+}
+let S;
+function load(){ try{ S=JSON.parse(localStorage.getItem('mq')||'null')||defaultState(); }catch{ S=defaultState(); } }
+function save(){ localStorage.setItem('mq', JSON.stringify(S)); }
+
+/* ══════════════════════════════════════════════
+   XP / LEVELING
+══════════════════════════════════════════════ */
+function addXP(amt, cx, cy){
+  S.player.xp += amt;
+  let leveled = false;
+  while(S.player.xp >= xpForLvl(S.player.lvl+1)){
+    S.player.lvl++;
+    const c = classForLvl(S.player.lvl);
+    S.player.cls = c.cls; S.player.title = `"${c.title}"`;
+    leveled = true;
+    setTimeout(()=>showLU(S.player.lvl), 600);
+  }
+  save(); updateHeader(); updateXPBar();
+  spawnXPPop(`+${amt} XP`, cx ?? window.innerWidth/2, cy ?? 200);
+  if(leveled) renderDash();
+  checkAch();
+}
+
+function spawnXPPop(txt, x, y){
+  const el = document.createElement('div');
+  el.className='xp-pop'; el.textContent=txt;
+  el.style.left=`${x-40}px`; el.style.top=`${y-20}px`;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 1700);
+}
+
+function showLU(lvl){
+  const c = classForLvl(lvl);
+  document.getElementById('lu-num').textContent = lvl;
+  document.getElementById('lu-class').textContent = c.cls;
+  document.getElementById('lu-msg').textContent = c.title;
+  document.getElementById('lu-modal').classList.add('show');
+}
+function closeLU(){ document.getElementById('lu-modal').classList.remove('show'); }
+
+/* ══════════════════════════════════════════════
+   DAILY LOGIN
+══════════════════════════════════════════════ */
+function checkLogin(){
+  const today = new Date().toDateString();
+  const btn = document.getElementById('claim-btn');
+  if(S.lastLogin === today){ btn.disabled=true; btn.textContent='✓ CLAIMED'; }
+}
+function claimLogin(){
+  const today = new Date().toDateString();
+  S.lastLogin = today; S.loginStreak = (S.loginStreak||0)+1;
+  const bonus = 25 + (S.loginStreak>=7?25:0) + (S.loginStreak>=30?50:0);
+  save(); addXP(bonus);
+  document.getElementById('claim-btn').disabled=true;
+  document.getElementById('claim-btn').textContent='✓ CLAIMED';
+  toast(`🌅 Daily login claimed! +${bonus} XP`, 'success');
+}
+
+/* ══════════════════════════════════════════════
+   QUEST RESETS
+══════════════════════════════════════════════ */
+function weekId(){ const d=new Date(); d.setDate(d.getDate()-d.getDay()); return d.toDateString(); }
+function checkResets(){
+  const today = new Date().toDateString(), wk = weekId();
+  if(S.quests.dReset!==today){ DAILY_QUESTS.forEach(q=>S.quests.daily[q.id]=false); S.quests.dReset=today; }
+  if(S.quests.wReset!==wk)   { WEEKLY_QUESTS.forEach(q=>S.quests.weekly[q.id]=false); S.quests.wReset=wk; }
+  save();
+}
+
+/* ══════════════════════════════════════════════
+   COMPLETE QUEST
+══════════════════════════════════════════════ */
+function completeQuest(id, xp, ev){
+  const daily = id.startsWith('d');
+  const map   = daily ? S.quests.daily : S.quests.weekly;
+  if(map[id]) return;
+  map[id] = true;
+  S.questsTotal = (S.questsTotal||0)+1;
+  const today = new Date().toDateString();
+  const yest  = new Date(Date.now()-86400000).toDateString();
+  if(S.streaks.lastQuest===yest) S.streaks.quest++;
+  else if(S.streaks.lastQuest!==today) S.streaks.quest=1;
+  S.streaks.lastQuest = today;
+  save();
+  addXP(xp, ev?.clientX, ev?.clientY);
+  renderQuests(); renderStreaks();
+  toast(`✓ Quest complete! +${xp} XP`, 'success');
+}
+
+/* ══════════════════════════════════════════════
+   BOSSES
+══════════════════════════════════════════════ */
+function updateSavings(){
+  const val = parseFloat(document.getElementById('sav-input').value)||0;
+  const old = S.fin.saved;
+  S.fin.saved = val;
+  // reward newly defeated bosses
+  if(old<16348 && val>=16348 && !S.bossDone.b1){ S.bossDone.b1=true; addXP(500); toast('🏆 BOSS DEFEATED: Emergency Goblin! +500 XP','success'); }
+  if(old<49044 && val>=49044 && !S.bossDone.b3){ S.bossDone.b3=true; addXP(1000); toast('🏆 BOSS DEFEATED: 3-Month Shield! +1000 XP','success'); }
+  // saving streak
+  const today=new Date().toDateString(), yest=new Date(Date.now()-86400000).toDateString();
+  if(val>old){
+    if(S.streaks.lastSave===yest) S.streaks.saving++;
+    else if(S.streaks.lastSave!==today) S.streaks.saving=1;
+    S.streaks.lastSave=today;
+  }
+  save(); renderBosses(); renderDash(); checkAch();
+  toast('💰 Savings updated!','info');
+}
+function defeatManualBoss(id, xp){
+  if(S.bossDone[id]) return;
+  S.bossDone[id]=true; save();
+  addXP(xp); renderBosses();
+  toast(`🏆 BOSS DEFEATED! +${xp} XP`, 'success');
+}
+
+/* ══════════════════════════════════════════════
+   EXPENSE TRACKER
+══════════════════════════════════════════════ */
+function logExpense(){
+  const amt  = parseFloat(document.getElementById('e-amt').value);
+  const cat  = document.getElementById('e-cat').value;
+  const desc = document.getElementById('e-desc').value.trim() || CATS[cat].label;
+  if(!amt||amt<=0){ toast('⚠️ Enter a valid amount!','warn'); return; }
+  S.expenses.unshift({ id:Date.now(), amt, cat, desc, date:new Date().toISOString() });
+  // logging streak
+  const today=new Date().toDateString(), yest=new Date(Date.now()-86400000).toDateString();
+  if(S.streaks.lastLog===yest) S.streaks.logging++;
+  else if(S.streaks.lastLog!==today) S.streaks.logging=1;
+  S.streaks.lastLog=today;
+  // shopping impulse penalty
+  if(cat==='shopping' && amt>500){
+    S.penalties.unshift({ date:new Date().toISOString(), reason:`Impulse shopping ₹${amt}`, xp:-100 });
+    S.player.xp = Math.max(0,S.player.xp-100);
+    save(); updateHeader(); updateXPBar();
+    toast('💀 PENALTY: Impulse buy > ₹500! -100 XP', 'danger');
+  }
+  // food overspend
+  const mFood = monthCatSpend('food');
+  if(cat==='food' && mFood > S.fin.budgets.food*1.1){
+    S.penalties.unshift({ date:new Date().toISOString(), reason:'Food budget exceeded by 10%+', xp:-50 });
+    S.player.xp = Math.max(0,S.player.xp-50);
+    save(); updateHeader(); updateXPBar();
+    toast('💀 PENALTY: Food budget blown! -50 XP','danger');
+  }
+  document.getElementById('e-amt').value='';
+  document.getElementById('e-desc').value='';
+  save(); addXP(30); renderTracker(); renderDash(); checkAch();
+}
+function monthCatSpend(cat){
+  const now=new Date(), ym=`${now.getFullYear()}-${now.getMonth()}`;
+  return S.expenses.filter(e=>{ const d=new Date(e.date); return e.cat===cat&&`${d.getFullYear()}-${d.getMonth()}`===ym; }).reduce((s,e)=>s+e.amt,0);
+}
+function monthSpend(){
+  const now=new Date(), ym=`${now.getFullYear()}-${now.getMonth()}`, t={};
+  S.expenses.filter(e=>{ const d=new Date(e.date); return `${d.getFullYear()}-${d.getMonth()}`===ym; }).forEach(e=>{ t[e.cat]=(t[e.cat]||0)+e.amt; });
+  return t;
+}
+
+/* ══════════════════════════════════════════════
+   ACHIEVEMENTS
+══════════════════════════════════════════════ */
+function checkAch(){
+  let any=false;
+  ACHIEVEMENTS.forEach(a=>{
+    if(!S.ach[a.id] && a.chk(S)){ S.ach[a.id]=true; any=true; addXP(100); toast(`🏅 BADGE UNLOCKED: ${a.name}! +100 XP`,'success'); }
+  });
+  if(any){ save(); renderAch(); }
+}
+
+/* ══════════════════════════════════════════════
+   SETTINGS
+══════════════════════════════════════════════ */
+function saveName(){
+  S.player.name=(document.getElementById('s-name').value.trim()||'Hero');
+  save(); renderDash(); toast('✓ Name saved!','info');
+}
+function saveFinances(){
+  S.fin.income=parseFloat(document.getElementById('sf-income').value)||20000;
+  ['food','transport','subscriptions','shopping','education','entertainment','other'].forEach(k=>{
+    const el=document.getElementById(`sf-${k}`); if(el) S.fin.budgets[k]=parseFloat(el.value)||0;
+  });
+  save(); renderDash(); renderTracker(); renderBosses(); toast('✓ Finances updated!','info');
+}
+function resetGame(){ if(confirm('⚠️ Reset ALL data? Cannot be undone.')){ localStorage.removeItem('mq'); location.reload(); } }
+function loadSettings(){
+  document.getElementById('s-name').value=S.player.name;
+  document.getElementById('sf-income').value=S.fin.income;
+  ['food','transport','subscriptions','shopping','education','entertainment','other'].forEach(k=>{
+    const el=document.getElementById(`sf-${k}`); if(el) el.value=S.fin.budgets[k]||0;
+  });
+}
+
+/* ══════════════════════════════════════════════
+   RENDER — DASHBOARD
+══════════════════════════════════════════════ */
+let chart=null;
+function renderDash(){
+  document.getElementById('d-class').textContent = S.player.cls;
+  document.getElementById('d-name').textContent  = S.player.name;
+  document.getElementById('d-title').textContent = S.player.title;
+  document.getElementById('d-lvl').textContent   = S.player.lvl;
+
+  const totalBudget = Object.values(S.fin.budgets).reduce((a,b)=>a+b,0);
+  const free = S.fin.income - totalBudget;
+  document.getElementById('d-income').textContent = `₹${S.fin.income.toLocaleString('en-IN')}`;
+  document.getElementById('d-spend').textContent  = `₹${totalBudget.toLocaleString('en-IN')}`;
+  document.getElementById('d-free').textContent   = `₹${free.toLocaleString('en-IN')}`;
+  document.getElementById('d-saved').textContent  = `₹${(S.fin.saved||0).toLocaleString('en-IN')}`;
+
+  // budget bars
+  const ms = monthSpend();
+  document.getElementById('d-budget').innerHTML = Object.entries(S.fin.budgets).map(([k,bud])=>{
+    if(!bud && !ms[k]) return '';
+    const spent=ms[k]||0, pct=bud?Math.min(110,(spent/bud)*100):0;
+    const cls = pct>100?'over':pct>75?'warn':'safe';
+    const clr = pct>100?'var(--red)':pct>75?'var(--gold)':'var(--muted)';
+    return `<div class="brow">
+      <div class="brow-lbl">${CATS[k].icon} ${CATS[k].label}</div>
+      <div class="brow-bar"><div class="brow-fill ${cls}" style="width:${Math.min(100,pct)}%"></div></div>
+      <div class="brow-amt" style="color:${clr}">₹${bud.toLocaleString('en-IN')}</div>
+    </div>`;
+  }).filter(Boolean).join('');
+
+  updateXPBar();
+  renderStreaks();
+  renderChart();
+}
+
+function renderStreaks(){
+  ['saving','logging','quest'].forEach(t=>{
+    const n=S.streaks[t]||0;
+    document.getElementById(`ss-${t}`).textContent=n;
+    document.getElementById(`sc-${t}`).classList.toggle('on',n>0);
+  });
+}
+
+function updateXPBar(){
+  const xp=S.player.xp, nxt=xpForLvl(S.player.lvl+1), pct=Math.min(100,(xp/nxt)*100);
+  document.getElementById('d-xp').textContent    = xp.toLocaleString();
+  document.getElementById('d-xpmax').textContent = nxt.toLocaleString();
+  document.getElementById('d-xpfill').style.width= `${pct}%`;
+}
+function updateHeader(){
+  const xp=S.player.xp, nxt=xpForLvl(S.player.lvl+1), pct=Math.min(100,(xp/nxt)*100);
+  document.getElementById('h-lvl').textContent    = S.player.lvl;
+  document.getElementById('h-xp').textContent     = xp.toLocaleString();
+  document.getElementById('h-xpmax').textContent  = nxt.toLocaleString();
+  document.getElementById('h-xpfill').style.width = `${pct}%`;
+}
+
+function renderChart(){
+  const canvas=document.getElementById('expChart'); if(!canvas) return;
+  const labels=[],data=[],colors=[];
+  Object.entries(S.fin.budgets).forEach(([k,v])=>{ if(v>0){ labels.push(CATS[k].label); data.push(v); colors.push(CATS[k].color); } });
+  if(chart){ chart.destroy(); chart=null; }
+  chart=new Chart(canvas,{
+    type:'doughnut',
+    data:{ labels, datasets:[{ data, backgroundColor:colors, borderColor:'#0d0d2b', borderWidth:3 }] },
+    options:{ responsive:true, plugins:{
+      legend:{ position:'bottom', labels:{ color:'#8892b0', font:{size:11}, padding:14 } },
+      tooltip:{ callbacks:{ label:ctx=>` ₹${ctx.raw.toLocaleString('en-IN')}` } }
+    }}
+  });
+}
+
+/* ══════════════════════════════════════════════
+   RENDER — QUESTS
+══════════════════════════════════════════════ */
+function renderQuests(){
+  const qHtml = (q, done) => `
+    <div class="quest-card ${done?'done':''}" onclick="${done?'':` completeQuest('${q.id}',${q.xp},event)`}">
+      <div class="quest-ico">${q.icon}</div>
+      <div class="quest-info">
+        <div class="quest-name">${done?'✓ ':''}${q.title}</div>
+        <div class="quest-desc">${q.desc}</div>
+      </div>
+      <div class="quest-xp">+${q.xp} XP</div>
+      <div class="quest-chk">${done?'✓':''}</div>
+    </div>`;
+  document.getElementById('q-daily').innerHTML  = DAILY_QUESTS.map(q=>qHtml(q,!!S.quests.daily[q.id])).join('');
+  document.getElementById('q-weekly').innerHTML = WEEKLY_QUESTS.map(q=>qHtml(q,!!S.quests.weekly[q.id])).join('');
+}
+
+/* ══════════════════════════════════════════════
+   RENDER — BOSSES
+══════════════════════════════════════════════ */
+function renderBosses(){
+  document.getElementById('b-list').innerHTML = BOSSES.map(b=>{
+    const defeated = S.bossDone[b.id] || b.preDefeated;
+    let prog=0, progTxt='', pct=0;
+    if(b.preDefeated){ prog=b.target; pct=100; progTxt='Already defeated!'; }
+    else if(b.manual){ pct=defeated?100:0; progTxt=defeated?'Completed ✓':'Mark as done below'; }
+    else { prog=Math.min(S.fin.saved||0, b.target); pct=Math.round((prog/b.target)*100); progTxt=`₹${prog.toLocaleString('en-IN')} / ₹${b.target.toLocaleString('en-IN')}`; }
+    const manualBtn = b.manual&&!defeated ? `<button onclick="defeatManualBoss('${b.id}',${b.reward})" style="margin-top:10px;background:var(--purple);color:#fff;border:none;border-radius:6px;padding:7px 14px;cursor:pointer;font-size:.78rem;font-weight:600">✓ MARK AS DONE +${b.reward} XP</button>` : '';
+    return `<div class="boss-card ${defeated?'dead':''}">
+      <div class="boss-top">
+        <div>
+          <div class="boss-name" style="color:${defeated?'var(--green)':b.color}">${defeated?'✓ DEFEATED: ':''}${b.name}</div>
+          <div class="boss-gate">Level ${b.gate} gate</div>
+        </div>
+        <div class="boss-emoji">${b.emoji}</div>
+      </div>
+      <div class="boss-desc">${b.desc}</div>
+      <div class="boss-hp-lbl"><span>${progTxt}</span><span>${pct}%</span></div>
+      <div class="boss-bar"><div class="boss-fill" style="width:${pct}%"></div></div>
+      <div class="boss-reward">🏆 Defeat reward: +${b.reward} XP</div>
+      ${manualBtn}
+    </div>`;
+  }).join('');
+  document.getElementById('sav-input').value = S.fin.saved||0;
+}
+
+/* ══════════════════════════════════════════════
+   RENDER — TRACKER
+══════════════════════════════════════════════ */
+function renderTracker(){
+  const ms=monthSpend();
+  const mHtml = Object.entries(CATS).map(([k,info])=>{
+    const bud=S.fin.budgets[k]||0, spent=ms[k]||0;
+    if(!bud&&!spent) return '';
+    const pct=bud?Math.min(110,(spent/bud)*100):100;
+    const cls=pct>100?'over':pct>80?'warn':'safe';
+    return `<div class="brow">
+      <div class="brow-lbl">${info.icon} ${info.label}</div>
+      <div class="brow-bar"><div class="brow-fill ${cls}" style="width:${Math.min(100,pct)}%"></div></div>
+      <div class="brow-amt" style="color:${pct>100?'var(--red)':pct>80?'var(--gold)':'var(--muted)'}">₹${spent.toLocaleString('en-IN')}${bud?` / ₹${bud.toLocaleString('en-IN')}`:''}
+      </div>
+    </div>`;
+  }).filter(Boolean).join('');
+  document.getElementById('t-monthly').innerHTML = mHtml || `<div class="empty"><div class="ei">📊</div><p>No expenses logged this month yet</p></div>`;
+
+  if(!S.expenses.length){
+    document.getElementById('t-history').innerHTML=`<div class="empty"><div class="ei">📝</div><p>No expenses logged. Start tracking!</p></div>`;
+    return;
+  }
+  document.getElementById('t-history').innerHTML = S.expenses.slice(0,25).map(e=>{
+    const info=CATS[e.cat]||CATS.other;
+    const dt=new Date(e.date).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+    return `<div class="exp-item">
+      <div class="exp-left"><div class="exp-ico">${info.icon}</div><div><div class="exp-n">${e.desc}</div><div class="exp-d">${dt} · ${info.label}</div></div></div>
+      <div class="exp-amt">-₹${e.amt.toLocaleString('en-IN')}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════
+   RENDER — ACHIEVEMENTS
+══════════════════════════════════════════════ */
+function renderAch(){
+  document.getElementById('a-grid').innerHTML = ACHIEVEMENTS.map(a=>{
+    const got=!!S.ach[a.id];
+    return `<div class="ach-card ${got?'got':'locked'}">
+      <div class="ach-ico">${a.icon}</div>
+      <div class="ach-name">${a.name}</div>
+      <div class="ach-desc">${a.desc}</div>
+      <span class="ach-badge ${got?'got':'locked'}">${got?'✓ UNLOCKED':'🔒 LOCKED'}</span>
+    </div>`;
+  }).join('');
+
+  if(!S.penalties.length){
+    document.getElementById('a-penalties').innerHTML=`<div class="empty"><div class="ei">😇</div><p>No penalties yet. Keep it clean!</p></div>`;
+    return;
+  }
+  document.getElementById('a-penalties').innerHTML = S.penalties.slice(0,10).map(p=>{
+    const dt=new Date(p.date).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+    return `<div class="pen-item"><span>💀</span><span style="flex:1">${p.reason}</span><span class="pen-xp">${p.xp} XP</span><span style="color:var(--muted);font-size:.7rem">${dt}</span></div>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════
+   NAVIGATION
+══════════════════════════════════════════════ */
+function go(tab, btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  btn.classList.add('active');
+  if(tab==='quests')       renderQuests();
+  if(tab==='bosses')       renderBosses();
+  if(tab==='tracker')      renderTracker();
+  if(tab==='achievements') renderAch();
+  if(tab==='settings')     loadSettings();
+}
+
+/* ══════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════ */
+let _tt;
+function toast(msg, type='info'){
+  document.querySelectorAll('.toast').forEach(t=>t.remove());
+  const colors={info:'var(--blue)',success:'var(--green)',danger:'var(--red)',warn:'var(--gold)'};
+  const el=document.createElement('div'); el.className='toast';
+  el.style.borderLeft=`4px solid ${colors[type]||colors.info}`; el.textContent=msg;
+  document.body.appendChild(el);
+  clearTimeout(_tt); _tt=setTimeout(()=>el.remove(), 3600);
+}
+
+/* ══════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════ */
+window.addEventListener('load',()=>{
+  load(); checkResets();
+  setTimeout(()=>{
+    const ld=document.getElementById('loading');
+    ld.style.opacity='0';
+    setTimeout(()=>{
+      ld.style.display='none';
+      document.getElementById('app').style.display='block';
+      renderDash(); updateHeader(); checkLogin(); checkAch();
+    },500);
+  }, 2300);
+});
+</script>
+</body>
+</html>
